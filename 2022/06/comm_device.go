@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-const vsize = 4;
+const vsize = 14;
 
 func main() {
 	var line string
