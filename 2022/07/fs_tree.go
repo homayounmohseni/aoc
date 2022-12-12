@@ -18,6 +18,9 @@ type node struct {
 }
 
 const DirSizeLimit = 100000
+const TotalSpace = 70000000
+const UnusedSpaceNeeded = 30000000
+const MaximumUsedSpace = TotalSpace - UnusedSpaceNeeded
 
 func main() {
 	root := newDir(nil)
@@ -66,7 +69,15 @@ func main() {
 	}
 
 	_, acceptedDirsSize := calculateSizes(root)
-	fmt.Println(acceptedDirsSize);
+	fmt.Println(acceptedDirsSize)
+
+	usedSpace := calculateSize(root)
+	_, selectedDirSize, err := findDirToDelete(root, usedSpace-MaximumUsedSpace)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(selectedDirSize)
 }
 
 func newDir(parent *node) *node {
@@ -112,3 +123,36 @@ func calculateSizes(topDir *node) (int, int) {
 	return thisSize, totalSize
 }
 
+func findDirToDelete(topDir *node, spaceToFree int) (size int, selectedDirSize int, err error) {
+	if spaceToFree < 0 {
+		err = errors.New("spaceToFree cannot be negative")
+		return
+	}
+
+	selectedDirSize = TotalSpace
+	for k, v := range topDir.Links {
+		if k == ".." {
+			continue
+		}
+		if v.IsDir {
+			_size, _selectedDirSize, e := findDirToDelete(v, spaceToFree)
+			if e != nil {
+				err = e
+				return
+			}
+			size += _size
+			if _selectedDirSize < selectedDirSize {
+				selectedDirSize = _selectedDirSize
+			}
+		} else {
+			size += v.Size
+		}
+	}
+
+	if size >= spaceToFree {
+		if size <= selectedDirSize {
+			selectedDirSize = size
+		}
+	}
+	return size, selectedDirSize, nil
+}
