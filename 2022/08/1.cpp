@@ -59,6 +59,31 @@ int main() {
 
 	cout << visible_cnt << "\n";
 
+	int max_score = 0;
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			const int &height = field[i][j];
+			int left, right, top, buttom;
+
+			int col;
+			for (col = max(0, j - 1); col > 0 && field[i][col] < height; col--);
+			left = j - col;
+			for (col = min(cols - 1, j + 1); col < cols - 1 && field[i][col] < height; col++);
+			right = col - j;
+			int row;
+			for (row = max(0, i - 1); row > 0 && field[row][j] < height; row--);
+			top = i - row;
+			for (row = min(rows - 1, i + 1); row < rows - 1 && field[row][j] < height; row++);
+			buttom = row - i;
+
+
+			int score = left * right * top * buttom;
+
+			max_score = max(max_score, score);
+		}
+	}
+	cout << max_score << "\n";
+
 	return 0;
 }
 
