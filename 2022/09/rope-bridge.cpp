@@ -4,25 +4,31 @@
 #include <set>
 #include <sstream>
 #include <utility>
+#include <cassert>
 
 
 
 using namespace std;
 
-pair<int, int> operator+(const pair<int, int> a, const pair<int, int> b);
-pair<int, int> operator-(const pair<int, int> a, const pair<int, int> b);
+pair<int, int> operator+(const pair<int, int> &a, const pair<int, int> &b);
+pair<int, int> operator-(const pair<int, int> &a, const pair<int, int> &b);
+pair<int, int> operator/(const pair<int, int> &a, int div);
 pair<int, int> get_delta(string d);
-int max_abs_reduce(pair<int, int> p);
+int	max_abs_reduce(pair<int, int> p);
+int get_manhattan_distance(pair<int, int> a, pair<int, int> b);
+pair<int, int> get_new_position(pair<int, int> cur, pair<int, int> master_prev, pair<int, int> master_cur);
 vector<string> split(const string& str);
 
-void pp(const string &prefix, const pair<int, int> &p); //for debuggin purposes
+void pp(const string &prefix, const pair<int, int> &p); //for debugging purposes
+
+const int KNOTS_CNT = 10;
 
 int main() {
 	string line;
 
 	set<pair<int, int>> visited_positions;
 	visited_positions.insert(pair<int, int>(0, 0));
-	pair<int, int> head_pos = {0, 0}, tail_pos = {0, 0};
+	vector<pair<int, int>> knots_pos(KNOTS_CNT, pair<int, int>(0, 0));
 
 	while (getline(cin, line)) {
 		auto words = split(line);
@@ -31,16 +37,27 @@ int main() {
 
 		pair<int, int> delta = get_delta(direction);
 		for (int i = 0; i < moves; i++) {
-			auto head_pos_prev = head_pos;
+			auto &head_pos = knots_pos[0];
+			auto master_prev_pos = head_pos;
 			head_pos = head_pos + delta;
+			for (int j = 1; j < KNOTS_CNT; j++) {
+				//auto head_pos_prev = head_pos;
+				const auto &master_cur_pos = knots_pos[j - 1];
+				auto &cur_pos = knots_pos[j];
 
 
-			if (max_abs_reduce(head_pos - tail_pos) > 1) {
-				tail_pos = head_pos_prev;
+				{
+					assert(max_abs_reduce(master_cur_pos - master_prev_pos) <= 1);
+				}
+
+
+
+				auto new_pos = get_new_position(cur_pos, master_prev_pos, master_cur_pos);
+				master_prev_pos = cur_pos;
+				cur_pos = new_pos;
 			}
+			const auto &tail_pos = knots_pos.back();
 			visited_positions.insert(tail_pos);
-			// pp("head: ", head_pos);
-			// pp("tail: ", tail_pos);
 		}
 	}
 
@@ -51,12 +68,16 @@ int main() {
 	return 0;
 }
 
-pair<int, int> operator+(const pair<int, int> a, const pair<int, int> b) {
+pair<int, int> operator+(const pair<int, int> &a, const pair<int, int> &b) {
 	return pair<int, int>(a.first + b.first, a.second + b.second);
 }
 
-pair<int, int> operator-(const pair<int, int> a, const pair<int, int> b) {
+pair<int, int> operator-(const pair<int, int> &a, const pair<int, int> &b) {
 	return pair<int, int>(a.first - b.first, a.second - b.second);
+}
+
+pair<int, int> operator/(const pair<int, int> &a, int div) {
+	return pair<int, int>(a.first / div, a.second / div);
 }
 
 int max_abs_reduce(pair<int, int> p) {
@@ -79,6 +100,34 @@ pair<int, int> get_delta(string d) {
 		res = pair<int, int>(-1, 0);
 	}
 	return res;
+}
+
+
+int get_manhattan_distance(pair<int, int> a, pair<int, int> b) {
+	return abs(a.first - b.first) + abs(a.second - b.second);
+}
+
+pair<int, int> get_new_position(pair<int, int> cur, pair<int, int> master_prev, pair<int, int> master_cur) {
+	if (max_abs_reduce(cur - master_cur) <= 1) {
+		return cur;
+	}
+	if (get_manhattan_distance(master_prev, master_cur) <= 1) {
+		return master_prev;
+	}
+
+
+	auto md = get_manhattan_distance(cur, master_cur);
+	assert(md >= 2 && md <= 4);
+	if (md == 2) {
+		return cur + ((master_cur - cur) / 2);
+	}
+	else if (md == 3) {
+		return cur + (master_cur - master_prev);
+	}
+	else if (md == 4) {
+		return master_prev;
+	}
+	return pair<int, int>();
 }
 
 vector<string> split(const string& str) {
