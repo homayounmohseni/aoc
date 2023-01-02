@@ -16,6 +16,7 @@ type monkey struct {
 	items []item
 	operation string
 	testFunc func(old item) bool
+	testDivisibleBy int
 	monkeyOnTrue int
 	monkeyOnFalse int
 	activityCount int
@@ -73,6 +74,7 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
+				mnk.testDivisibleBy = num
 				mnk.testFunc = func(n item) bool {
 					return int(n) % num == 0
 				}
@@ -99,14 +101,18 @@ func main() {
 		}
 	}
 	monkeys = append(monkeys, mnk)
+	
 
-	// fmt.Println("before round 0: ")
-	// for j := 0; j < len(monkeys); j++ {
-	// 	fmt.Println("monkey", j, ": ", monkeys[j].items)
-	// }
+	var mod int = 1
+	for _, m := range monkeys {
+		mod *= m.testDivisibleBy
+	}
+
+	crazyMonkeys := copyMonkeys(monkeys)
 
 	for i := 0; i < 20; i++ {
-		for j, _ := range monkeys {
+		for j := 0; j < len(monkeys); j++ {
+			itemsCount := len(monkeys[j].items)
 			for _, itm := range monkeys[j].items {
 				monkeys[j].activityCount++;
 				(&itm).operate(monkeys[j].operation)
@@ -116,14 +122,9 @@ func main() {
 				} else {
 					monkeys[monkeys[j].monkeyOnFalse].addItem(itm)
 				}
-				monkeys[j].items = monkeys[j].items[1:]
 			}
+			monkeys[j].items = monkeys[j].items[itemsCount:]
 		}
-		// fmt.Println("after round", i, ": ")
-		// for j := 0; j < len(monkeys); j++ {
-		// 	fmt.Println("monkey", j, ": ", monkeys[j].items)
-		// }
-		// fmt.Println()
 	}
 
 	var maxActivityCount1, maxActivityCount2 int
@@ -137,12 +138,49 @@ func main() {
 		}
 	}
 	monkeyBuisness := maxActivityCount1 * maxActivityCount2
+
+
+	for i := 0; i < 10000; i++ {
+		for j := 0; j < len(crazyMonkeys); j++ {
+			itemsCount := len(crazyMonkeys[j].items)
+			for _, itm := range crazyMonkeys[j].items {
+				crazyMonkeys[j].activityCount++;
+				(&itm).operateMod(monkeys[j].operation, mod)
+				if crazyMonkeys[j].testFunc(itm) {
+					crazyMonkeys[crazyMonkeys[j].monkeyOnTrue].addItem(itm)
+				} else {
+					crazyMonkeys[crazyMonkeys[j].monkeyOnFalse].addItem(itm)
+				}
+			}
+			crazyMonkeys[j].items = crazyMonkeys[j].items[itemsCount:]
+		}
+	}
+	maxActivityCount1 = 0
+	maxActivityCount2 = 0
+	for i := 0; i < len(crazyMonkeys); i++ {
+		ac := crazyMonkeys[i].activityCount
+		if ac > maxActivityCount1 {
+			maxActivityCount2 = maxActivityCount1
+			maxActivityCount1 = ac
+		} else if ac > maxActivityCount2 {
+			maxActivityCount2 = ac;
+		}
+	}
+
+	crazyMonkeyBuisness := maxActivityCount1 * maxActivityCount2
 	fmt.Println(monkeyBuisness)
+	fmt.Println(crazyMonkeyBuisness);
+}
+
+
+func (itm *item) operateMod(op string, mod int) {
+	itm.operate(op)
+	itmInt := int64(*itm)
+	*itm = item(itmInt % int64(mod))
 }
 
 
 func (itm *item) operate(op string) {
-	//TODO
 	oldItm := int64(*itm)
 	var newItm int64
 
@@ -202,4 +240,15 @@ func newMonkey() monkey {
 	var m monkey
 	m.items = make([]item, 0)
 	return m
+}
+
+func copyMonkeys(monkeys []monkey) []monkey {
+	newMonkeys := make([]monkey, 0, len(monkeys))
+	for _, mnk := range monkeys {
+		items := make([]item, len(mnk.items))
+		copy(items, mnk.items)
+		mnk.items = items
+		newMonkeys = append(newMonkeys, mnk)
+	}
+	return newMonkeys
 }
