@@ -63,11 +63,11 @@ func main() {
 	hm := heightmap(hmSlice)
 
 	q := newQueue[position]()
-	startSq := hm.at(startPos)
-	startSq.seen = true
-	startSq.distance = 0
+	endSq := hm.at(endPos)
+	endSq.seen = true
+	endSq.distance = 0
 
-	q.enqueue(startPos)
+	q.enqueue(endPos)
 	for !q.isEmpty() {
 		pos := q.dequeue()
 		
@@ -76,7 +76,7 @@ func main() {
 		for _, adjPos := range adjs {
 			if hm.contains(adjPos) {
 				adjSq := hm.at(adjPos)
-				if canClimb(sq, adjSq) && !adjSq.seen {
+				if canUnclimb(sq, adjSq) && !adjSq.seen {
 					adjSq.seen = true
 					adjSq.distance = sq.distance + 1
 					q.enqueue(adjPos)
@@ -85,7 +85,19 @@ func main() {
 		}
 	}
 
-	fmt.Println(hm.at(endPos).distance)
+	startToEndDistance := hm.at(startPos).distance
+	var minLowestToEndDistance int = 1 << 31 - 1
+	for _, row := range hm {
+		for _, sq := range row {
+			if sq.height == 'a' {
+				if sq.distance < minLowestToEndDistance {
+					minLowestToEndDistance = sq.distance
+				}
+			}
+		}
+	}
+	fmt.Println(startToEndDistance)
+	fmt.Println(minLowestToEndDistance)
 }
 
 
@@ -153,4 +165,8 @@ func (pos position) left() position {
 
 func canClimb(from, to *square) bool {
 	return int16(to.height) - int16(from.height) <= 1
+}
+
+func canUnclimb(from, to *square) bool {
+	return int16(to.height) - int16(from.height) >= -1
 }
