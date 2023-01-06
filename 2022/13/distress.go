@@ -9,15 +9,17 @@ import (
 	"strconv"
 	"io"
 	"fmt"
+	"sort"
 )
 
 type pair[T any] [2]T
+type  packetList[]string
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
 	pairs := make([]pair[string], 0)
-	var p pair[string] 
-
+	var pr pair[string] 
+	var packets packetList
 	var interpairIndex int8
 	for {
 		line, err := reader.ReadString('\n')
@@ -31,22 +33,57 @@ func main() {
 
 		line = strings.TrimSpace(line)
 		if line != "" {
-			p[interpairIndex] = line
+			packets = append(packets, line)
+			pr[interpairIndex] = line
 			if interpairIndex == 1 {
-				pairs = append(pairs, p)
+				pairs = append(pairs, pr)
 			}
 			interpairIndex = (interpairIndex + 1) % 2
 		}
 	}
 
 	indexSum := 0;
-	for i, p := range pairs {
-		if (isInRightOrder(p)) {
+	for i, pr := range pairs {
+		if (isInRightOrder(pr)) {
 			indexSum += i + 1
 		}
 	}
-	
 	fmt.Println(indexSum)
+
+	devisorPackets := []string{"[[6]]", "[[2]]"}
+	for _, dp := range devisorPackets {
+		packets = append(packets, dp)
+	}
+
+	
+	sort.Sort(packets)
+
+	var devisorIndeces []int
+	for i, p := range packets {
+		for _, dp := range devisorPackets {
+			if p == dp {
+				devisorIndeces = append(devisorIndeces, i)
+			}
+		}
+	}
+	decoderKey := 1
+	for _, di := range devisorIndeces {
+		decoderKey *= (di + 1)
+	}
+	fmt.Println(decoderKey)
+}
+
+
+func (p packetList) Len() int {
+	return len(p)
+}
+
+func (p packetList) Less(i, j int) bool {
+	return Compare(p[i], p[j]) > 0
+}
+
+func (p packetList) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
 }
 
 func isInRightOrder(p pair[string]) bool {
