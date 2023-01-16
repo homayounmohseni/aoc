@@ -11,6 +11,8 @@ func TestReadOneInt(t *testing.T) {
 		strIn    string
 		expected []int
 	}{
+		{"", []int{}},
+		{"nonumber", []int{}},
 		{"0", []int{0}},
 		{" 9", []int{9}},
 		{"9 ", []int{9}},
