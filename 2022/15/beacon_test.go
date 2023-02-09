@@ -40,76 +40,160 @@ func TestParseInput(t *testing.T) {
 	}
 }
 
-func TestAddRange(t *testing.T) {
+func TestAddIntRange(t *testing.T) {
 	var tests = []struct{
-		fieldRanges []Pair[int]
-		newRange Pair[int]
-		expectedRanges []Pair[int]
+		initialRanges []IntRange
+		newRanges []IntRange
+		expectedFinalRanges []IntRange
 	}{
 		{
-			[]Pair[int]{},
-			Pair[int]{2, 7},
-			[]Pair[int]{
+			[]IntRange{},
+			[]IntRange{{2, 7}},
+			[]IntRange{
 				{2, 7},
 			},
 		},
 		{
-			[]Pair[int]{},
-			Pair[int]{2, 2},
-			[]Pair[int]{{2, 2}},
+			[]IntRange{},
+			[]IntRange{{2, 2}},
+			[]IntRange{{2, 2}},
 		},
 		{
-			[]Pair[int]{{1, 2}, {5, 10}, {25, 25}},
-			Pair[int]{3, 4},
-			[]Pair[int]{{1, 2}, {3, 4}, {5, 10}, {25, 25}},
+			[]IntRange{{1, 2}, {5, 10}, {25, 25}},
+			[]IntRange{{3, 4}},
+			[]IntRange{{1, 2}, {3, 4}, {5, 10}, {25, 25}},
 		},
 		{
-			[]Pair[int]{{1, 2}, {5, 10}, {25, 25}},
-			Pair[int]{3, 5},
-			[]Pair[int]{{1, 2}, {3, 10}, {25, 25}},
+			[]IntRange{{1, 2}, {5, 10}, {25, 25}},
+			[]IntRange{{3, 5}},
+			[]IntRange{{1, 2}, {3, 10}, {25, 25}},
 		},
 		{
-			[]Pair[int]{{1, 2}, {5, 10}, {25, 25}},
-			Pair[int]{2, 4},
-			[]Pair[int]{{1, 4}, {5, 10}, {25, 25}},
+			[]IntRange{{1, 2}, {5, 10}, {25, 25}},
+			[]IntRange{{2, 4}},
+			[]IntRange{{1, 4}, {5, 10}, {25, 25}},
 		},
 		{
-			[]Pair[int]{{1, 2}, {5, 10}, {25, 25}},
-			Pair[int]{4, 9},
-			[]Pair[int]{{1, 2}, {4, 10}, {25, 25}},
+			[]IntRange{{1, 2}, {5, 10}, {25, 25}},
+			[]IntRange{{4, 9}},
+			[]IntRange{{1, 2}, {4, 10}, {25, 25}},
 		},
 		{
-			[]Pair[int]{{1, 2}, {5, 10}, {25, 25}},
-			Pair[int]{6, 11},
-			[]Pair[int]{{1, 2}, {5, 11}, {25, 25}},
+			[]IntRange{{1, 2}, {5, 10}, {25, 25}},
+			[]IntRange{{6, 11}},
+			[]IntRange{{1, 2}, {5, 11}, {25, 25}},
 		},
 		{
-			[]Pair[int]{{1, 2}, {5, 10}, {25, 25}, {35, 40}},
-			Pair[int]{4, 26},
-			[]Pair[int]{{1, 2}, {4, 26}, {35, 40}},
+			[]IntRange{{1, 2}, {5, 10}, {25, 25}, {35, 40}},
+			[]IntRange{{4, 26}},
+			[]IntRange{{1, 2}, {4, 26}, {35, 40}},
+		},
+		{
+			[]IntRange{},
+			[]IntRange{{2, 2}, {4, 5}, {11, 13}},
+			[]IntRange{{2, 2}, {4, 5}, {11, 13}},
 		},
 	}
 	for _, test := range tests {
-		f := Field{
-			ranges: test.fieldRanges,
-		}
-		f.AddRange(test.newRange)
+		finalRanges := AddIntRange(test.initialRanges, test.newRanges...)
 		err := fmt.Errorf(
-			"AddRange: fieldRanges: %v, newRange: %v, got: %v, expected: %v\n",
-			test.fieldRanges,
-			test.newRange,
-			f.ranges,
-			test.expectedRanges,
+			"AddIntRange: initialRanges: %v, newRanges: %v, finalRanges: %v, expectedFinalRanges: %v\n",
+			test.initialRanges,
+			test.newRanges,
+			finalRanges,
+			test.expectedFinalRanges,
 		)
-
-		if len(f.ranges) != len(test.expectedRanges) {
+		if len(finalRanges) != len(test.expectedFinalRanges) {
 			t.Error(err)
 		} else {
-			for i := 0; i < len(f.ranges); i++ {
-				if f.ranges[i] != test.expectedRanges[i]{
+			for i := 0; i < len(finalRanges); i++ {
+				if finalRanges[i] != test.expectedFinalRanges[i]{
 					t.Error(err)
 				}
 			}
+		}
+	}
+}
+
+func TestComplementRanges(t *testing.T) {
+	min := 0
+	max := 20
+	tests := []struct{
+		ranges []IntRange
+		expectedFinalRanges []IntRange
+	}{
+		{
+			[]IntRange{},
+			[]IntRange{{0,20}},
+		},
+		{
+			[]IntRange{{0, 1}, {10, 11}, {19, 20}},
+			[]IntRange{{1, 10}, {11, 19}},
+		},
+		{
+			[]IntRange{{0, 20}},
+			[]IntRange{},
+		},
+		{
+			[]IntRange{{0, 25}},
+			[]IntRange{},
+		},
+		{
+			[]IntRange{{-5, 20}},
+			[]IntRange{},
+		},
+		{
+			[]IntRange{{-5, 25}},
+			[]IntRange{},
+		},
+		{
+			[]IntRange{{-5, 5}},
+			[]IntRange{{5, 20}},
+		},
+		{
+			[]IntRange{{15, 25}},
+			[]IntRange{{0, 15}},
+		},
+		{
+			[]IntRange{{-5, 5}, {7, 13}, {15, 25}},
+			[]IntRange{{5, 7}, {13, 15}},
+		},
+	}
+
+	for _, test := range tests {
+		finalRanges := ComplementRanges(test.ranges, min, max)
+		err := fmt.Errorf(
+			"ComplementRanges: initialRanges: %v, min: %v, max: %v finalRanges: %v, expectedFinalRanges: %v\n",
+			test.ranges, min, max, finalRanges, test.expectedFinalRanges,
+		)
+		if len(finalRanges) != len(test.expectedFinalRanges) {
+			t.Error(err)
+		} else {
+			for i := 0; i < len(finalRanges); i++ {
+				if finalRanges[i] != test.expectedFinalRanges[i] {
+					t.Error(err)
+				}
+			}
+		}
+	}
+}
+
+func TestCountRangeElements(t *testing.T) {
+	tests := []struct{
+		ranges []IntRange
+		expectedCount int
+	}{
+		{
+			[]IntRange{{1, 3}, {5, 10}},
+			7,
+		},
+	}
+	for _, test := range tests {
+		count := CountRangeElements(test.ranges)
+		if count != test.expectedCount {
+			t.Errorf("CountRange: ranges: %v, count: %v, expectedCount: %v",
+			test.ranges, count, test.expectedCount,
+		)
 		}
 	}
 }
