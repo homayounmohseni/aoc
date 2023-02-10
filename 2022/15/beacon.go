@@ -9,30 +9,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
-
-type Pair[T any] [2]T
-type Position Pair[int]
-// An InRange is defined as a pair of integers such that the second element is always larger
-// than the first one. This range includes the numbers starting from r[0] to r[1] - 1 that is
-// r[1] is not included in the range
-type IntRange Pair[int]
-
-type SensorRecord struct {
-	pos Position
-	detectedBeaconPos Position
-}
-
-type Field struct {
-	row int
-	xRanges map[int][]IntRange
-	locatedBeacons map[Position]struct{}
-}
-
-type Node[T any] struct {
-	next *Node[T]
-	value T
-}
 
 // const defaultRow = 10
 // const minY = 0
@@ -45,34 +23,59 @@ const minX = 0
 const maxY = 4_000_000 + 1
 const maxX = 4_000_000 + 1
 
+const numWorkers = 1 << 10
+
+type Pair[T any] [2]T
+type Position Pair[int]
+
+// An InRange is defined as a pair of integers such that the second element is always larger
+// than the first one. This range includes the numbers starting from r[0] to r[1] - 1 that is
+// r[1] is not included in the range
+type IntRange Pair[int]
+
+type SensorRecord struct {
+	pos               Position
+	detectedBeaconPos Position
+}
+
+type Field struct {
+	row            int
+	xRanges        [maxY - minY][]IntRange
+	locatedBeacons map[Position]struct{}
+}
+
+type Node[T any] struct {
+	next  *Node[T]
+	value T
+}
+
 func main() {
 	lines := ReadLines()
 	sbPairs := ParseInput(lines)
 	records := ExtractRecords(sbPairs)
 	field := NewField()
 	field.InitRanges(records)
-	
+
 	cnt := field.CountPositions(records)
 	distressBeaconPos, err := field.FindDistressBeacon()
 	distressBeaconFrequency := CalculateTuningFrequency(distressBeaconPos)
 	if err != nil {
 		panic(err)
 	}
-	
+
 	fmt.Println(cnt)
 	fmt.Println(distressBeaconFrequency)
 }
 
 func NewField() *Field {
 	return &Field{
-		row: defaultRow,
-		xRanges: make(map[int][]IntRange),
+		row:            defaultRow,
 		locatedBeacons: make(map[Position]struct{}),
 	}
 }
 
 func CalculateTuningFrequency(p Position) int64 {
-	return int64(p[0]) * int64(4_000_000) + int64(p[1])
+	return int64(p[0])*int64(4_000_000) + int64(p[1])
 }
 
 func (f *Field) FindDistressBeacon() (Position, error) {
@@ -97,46 +100,64 @@ func (f *Field) AddRange(newR IntRange, y int) {
 }
 
 func (f *Field) InitRanges(records []SensorRecord) {
-	for y := minY; y < maxY; y++ {
-		for _, r := range records {
-			f.locatedBeacons[r.detectedBeaconPos] = struct{}{}
+	indeces := make(chan int)
 
-			dist := GetManhattanDistance(r.pos, r.detectedBeaconPos)
-			l := dist - AbsInt(r.pos[1] - y)
-			if l <= 0 {
-				continue
-			}
-			rngStart := r.pos[0] - l
-			rngEnd := r.pos[0] + l + 1
-			if r.detectedBeaconPos[1] == y {
-				if r.detectedBeaconPos[0] == r.pos[0] - l {
-					rngStart++;
-				} else if r.detectedBeaconPos[0] == r.pos[0] + l {
-					rngEnd--;
+	var wg sync.WaitGroup
+	wg.Add(numWorkers)
+	for i := 0; i < numWorkers; i++ {
+		go func() {
+			defer wg.Done()
+			for ind := range indeces {
+				for _, r := range records {
+					dist := GetManhattanDistance(r.pos, r.detectedBeaconPos)
+					l := dist - AbsInt(r.pos[1]-ind)
+					if l <= 0 {
+						continue
+					}
+					rngStart := r.pos[0] - l
+					rngEnd := r.pos[0] + l + 1
+					if r.detectedBeaconPos[1] == ind {
+						if r.detectedBeaconPos[0] == r.pos[0]-l {
+							rngStart++
+						} else if r.detectedBeaconPos[0] == r.pos[0]+l {
+							rngEnd--
+						}
+					}
+					rng := IntRange{rngStart, rngEnd}
+					f.AddRange(rng, ind)
 				}
 			}
-			rng := IntRange{rngStart, rngEnd}
-			f.AddRange(rng, y)
-		}
+		}()
+	}
+	for i := 0; i < maxY; i++ {
+		indeces <- i
+	}
+	close(indeces)
+	wg.Wait()
+
+	for _, r := range records {
+		f.locatedBeacons[r.detectedBeaconPos] = struct{}{}
 	}
 }
 
-func AddIntRange (slice []IntRange, elms ...IntRange) []IntRange{
+func AddIntRange(slice []IntRange, elms ...IntRange) []IntRange {
 	for _, elm := range elms {
 		if len(slice) == 0 {
 			slice = append(slice, elm)
 			continue
 		}
-		
+
 		var i int
-		for i = 0; i < len(slice) && slice[i][1] < elm[0]; i++ {}
+		for i = 0; i < len(slice) && slice[i][1] < elm[0]; i++ {
+		}
 		var j int
-		for j = i; j < len(slice) && slice[j][0] <= elm[1]; j++ {}
+		for j = i; j < len(slice) && slice[j][0] <= elm[1]; j++ {
+		}
 		var newRanges []IntRange
 		newRanges = append(newRanges, slice[:i]...)
 		var mergedRange IntRange
 		if i != j {
-			mergedRange = IntRange{MinInt(elm[0], slice[i][0]), MaxInt(elm[1], slice[j - 1][1])}
+			mergedRange = IntRange{MinInt(elm[0], slice[i][0]), MaxInt(elm[1], slice[j-1][1])}
 		} else {
 			mergedRange = elm
 		}
@@ -150,14 +171,16 @@ func AddIntRange (slice []IntRange, elms ...IntRange) []IntRange{
 func ComplementRanges(ranges []IntRange, min, max int) []IntRange {
 	var compRanges []IntRange
 	var i, j int
-	for i = 0; i < len(ranges) && ranges[i][0] <= min; i++ {}
-	for j = i; j < len(ranges) && ranges[j][1] < max; j++ {}
+	for i = 0; i < len(ranges) && ranges[i][0] <= min; i++ {
+	}
+	for j = i; j < len(ranges) && ranges[j][1] < max; j++ {
+	}
 
 	var start int
 	if i == 0 {
 		start = min
 	} else {
-		start = MaxInt(min, ranges[i - 1][1])
+		start = MaxInt(min, ranges[i-1][1])
 		if start > max {
 			start = max
 		}
@@ -190,7 +213,7 @@ func ExtractRecords(sbPairs []Pair[Position]) []SensorRecord {
 	var records []SensorRecord
 	for _, sbPair := range sbPairs {
 		records = append(records, SensorRecord{
-			pos: sbPair[0],
+			pos:               sbPair[0],
 			detectedBeaconPos: sbPair[1],
 		})
 	}
@@ -222,7 +245,8 @@ func ParseInput(lines []string) []Pair[Position] {
 			from := strings.Index(line, "=")
 			from++
 			to := from + 1
-			for ; to < len(line) && line[to] != ',' && line[to] != ':'; to++ {}
+			for ; to < len(line) && line[to] != ',' && line[to] != ':'; to++ {
+			}
 			num, err := strconv.Atoi(strings.TrimSpace(line[from:to]))
 			if err != nil {
 				panic(fmt.Errorf("ParseInput: %v", err))

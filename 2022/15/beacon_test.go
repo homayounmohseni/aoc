@@ -6,8 +6,8 @@ import (
 )
 
 func TestParseInput(t *testing.T) {
-	var test = struct{
-		in []string
+	var test = struct {
+		in       []string
 		expected []Pair[Position]
 	}{
 		[]string{
@@ -41,9 +41,9 @@ func TestParseInput(t *testing.T) {
 }
 
 func TestAddIntRange(t *testing.T) {
-	var tests = []struct{
-		initialRanges []IntRange
-		newRanges []IntRange
+	var tests = []struct {
+		initialRanges       []IntRange
+		newRanges           []IntRange
 		expectedFinalRanges []IntRange
 	}{
 		{
@@ -107,7 +107,7 @@ func TestAddIntRange(t *testing.T) {
 			t.Error(err)
 		} else {
 			for i := 0; i < len(finalRanges); i++ {
-				if finalRanges[i] != test.expectedFinalRanges[i]{
+				if finalRanges[i] != test.expectedFinalRanges[i] {
 					t.Error(err)
 				}
 			}
@@ -118,13 +118,13 @@ func TestAddIntRange(t *testing.T) {
 func TestComplementRanges(t *testing.T) {
 	min := 0
 	max := 20
-	tests := []struct{
-		ranges []IntRange
+	tests := []struct {
+		ranges              []IntRange
 		expectedFinalRanges []IntRange
 	}{
 		{
 			[]IntRange{},
-			[]IntRange{{0,20}},
+			[]IntRange{{0, 20}},
 		},
 		{
 			[]IntRange{{0, 1}, {10, 11}, {19, 20}},
@@ -179,8 +179,8 @@ func TestComplementRanges(t *testing.T) {
 }
 
 func TestCountRangeElements(t *testing.T) {
-	tests := []struct{
-		ranges []IntRange
+	tests := []struct {
+		ranges        []IntRange
 		expectedCount int
 	}{
 		{
@@ -192,8 +192,8 @@ func TestCountRangeElements(t *testing.T) {
 		count := CountRangeElements(test.ranges)
 		if count != test.expectedCount {
 			t.Errorf("CountRange: ranges: %v, count: %v, expectedCount: %v",
-			test.ranges, count, test.expectedCount,
-		)
+				test.ranges, count, test.expectedCount,
+			)
 		}
 	}
 }
